@@ -266,8 +266,8 @@ class TestRegisterRetiredUsername(TestCase):
         """
         assert response.status_code == 400
         obj = json.loads(response.content)
-        assert obj['value'].startswith('An account with the Public Username')
-        assert obj['value'].endswith('already exists.')
+        assert obj['value'].startswith('It looks like ')
+        assert obj['value'].endswith('different username.')
         assert orig_username in obj['value']
         assert obj['field'] == 'username'
         assert not obj['success']
