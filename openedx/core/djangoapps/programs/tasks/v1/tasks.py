@@ -16,6 +16,7 @@ from openedx.core.djangoapps.certificates.api import available_date_for_certific
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.credentials.models import CredentialsApiConfig
 from openedx.core.djangoapps.credentials.utils import get_credentials, get_credentials_api_client
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.programs.utils import ProgramProgressMeter
 
 LOGGER = get_task_logger(__name__)
@@ -122,6 +123,9 @@ def award_program_certificates(self, username):
         None
 
     """
+    if configuration_helpers.get_value('partner_without_program_certificates', False):
+        # this check will prevent unnecessary logging for partners without program certificates
+        return
     LOGGER.info('Running task award_program_certificates for username %s', username)
 
     countdown = 2 ** self.request.retries
