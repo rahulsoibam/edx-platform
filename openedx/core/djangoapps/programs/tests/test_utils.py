@@ -655,25 +655,6 @@ class TestProgramProgressMeter(TestCase):
             program_complete['uuid']: datetime.datetime(2017, 1, 1)
         })
 
-    def test_program_completion_with_skipped_program(self, mock_get_programs):
-        """
-        Verify that if we add program's uuid in site configuration then it will be skipped for certificates.
-        """
-        course_runs = CourseRunFactory.create_batch(2, type=CourseMode.PROFESSIONAL)
-        program = ProgramFactory(courses=[CourseFactory(course_runs=course_runs)])
-        mock_get_programs.return_value = [program]
-        self._create_enrollments(course_runs[0]['key'])
-        self._create_certificates(course_runs[0]['key'], mode=CourseMode.NO_ID_PROFESSIONAL_MODE)
-
-        # Verify that the program is complete.
-        meter = ProgramProgressMeter(self.site, self.user)
-        self.assertEqual(meter.completed_programs_with_available_dates.keys(), [program['uuid']])
-
-        # we skipped the programs if we add it in site configuration
-        with mock.patch('openedx.core.djangoapps.site_configuration.helpers.get_value') as mocked_get_value:
-            mocked_get_value.return_value = [program['uuid']]
-            self.assertEqual(meter.completed_programs_with_available_dates.keys(), [])
-
     def test_completed_course_runs(self, mock_get_programs):
         """
         Verify that the method can find course run certificates when not mocked out.

@@ -123,9 +123,6 @@ def award_program_certificates(self, username):
         None
 
     """
-    if configuration_helpers.get_value('partner_without_program_certificates', False):
-        # this check will prevent unnecessary logging for partners without program certificates
-        return
     LOGGER.info('Running task award_program_certificates for username %s', username)
 
     countdown = 2 ** self.request.retries
@@ -159,6 +156,17 @@ def award_program_certificates(self, username):
 
         # Determine which program certificates the user has already been awarded, if any.
         existing_program_uuids = get_certified_programs(student)
+
+        programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
+        if programs_without_certificates:
+            if programs_without_certificates[0].lower == "all":
+                # this check will prevent unnecessary logging for partners without program certificates
+                return
+
+            # removing the program uuids from completed or already certificate provided programs list.
+            for program in programs_without_certificates:
+                _ = completed_programs.pop(program['uuid'], None)
+                _ = existing_program_uuids.pop(program['uuid'], None)
 
     except Exception as exc:
         LOGGER.exception('Failed to determine program certificates to be awarded for user %s', username)

@@ -285,12 +285,10 @@ class ProgramProgressMeter(object):
         Returns a dict of {uuid_string: available_datetime}
         """
         completed = {}
-        programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
         for program in self.programs:
-            if program['uuid'] not in programs_without_certificates:
-                available_date = self._available_date_for_program(program)
-                if available_date:
-                    completed[program['uuid']] = available_date
+            available_date = self._available_date_for_program(program)
+            if available_date:
+                completed[program['uuid']] = available_date
         return completed
 
     def _available_date_for_program(self, program_data):
