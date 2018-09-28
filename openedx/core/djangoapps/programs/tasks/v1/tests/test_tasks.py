@@ -7,6 +7,7 @@ import ddt
 import httpretty
 import mock
 import pytz
+import uuid
 from waffle.testutils import override_switch
 from celery.exceptions import MaxRetriesExceededError
 from django.conf import settings
@@ -170,6 +171,38 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         actual_visible_dates = [call[0][3] for call in mock_award_program_certificate.call_args_list]
         self.assertEqual(actual_visible_dates, expected_awarded_program_uuids)  # program uuids are same as mock dates
 
+    @mock.patch('openedx.core.djangoapps.site_configuration.helpers.get_value')
+    def test_awarding_certs_with_skip_program_certificate(
+            self,
+            mock_get_value,
+            mock_get_completed_programs,
+            mock_get_certified_programs,
+            mock_award_program_certificate,
+    ):
+        """
+        Checks that the Credentials API is used to award certificates for
+        the proper programs.
+        """
+        program_uuid_1 = str(uuid.uuid4())
+        program_uuid_2 = str(uuid.uuid4())
+        program_uuid_3 = str(uuid.uuid4())
+
+        # program that will be skipped for certificated
+        mock_get_value.return_value = [program_uuid_2]
+
+        # all the programs that are completed and eligible for certificated
+        mock_get_completed_programs.return_value = {program_uuid_1: 1, program_uuid_2: 2, program_uuid_3: 3}    #completed
+
+        # program list which is already been awarded bt certificated.
+        mock_get_certified_programs.return_value = [program_uuid_2]
+
+        tasks.award_program_certificates.delay(self.student.username).get()
+        actual_program_uuids = [call[0][2] for call in mock_award_program_certificate.call_args_list]
+        self.assertEqual(actual_program_uuids, [program_uuid_3])
+
+        actual_visible_dates = [call[0][3] for call in mock_award_program_certificate.call_args_list]
+        self.assertEqual(actual_visible_dates, [program_uuid_3])  # program uuids are same as mock dates
+
     @ddt.data(
         ('credentials', 'enable_learner_issuance'),
     )
@@ -216,6 +249,25 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         mock_get_completed_programs.return_value = {}
         tasks.award_program_certificates.delay(self.student.username).get()
         self.assertTrue(mock_get_completed_programs.called)
+        self.assertFalse(mock_get_certified_programs.called)
+        self.assertFalse(mock_award_program_certificate.called)
+
+    @mock.patch('openedx.core.djangoapps.site_configuration.helpers.get_value')
+    def test_programs_without_certificates(
+        self,
+        mock_get_value,
+        mock_get_completed_programs,
+        mock_get_certified_programs,
+        mock_award_program_certificate
+    ):
+        """
+        Checks that the task will be aborted without further action if there
+        are no programs for which to award a certificate.
+        """
+        mock_get_value.return_value = ["ALL"]
+        mock_get_completed_programs.return_value = {}
+        tasks.award_program_certificates.delay(self.student.username).get()
+        self.assertFalse(mock_get_completed_programs.called)
         self.assertFalse(mock_get_certified_programs.called)
         self.assertFalse(mock_award_program_certificate.called)
 

@@ -125,8 +125,13 @@ def award_program_certificates(self, username):
     """
     LOGGER.info('Running task award_program_certificates for username %s', username)
 
-    countdown = 2 ** self.request.retries
+    programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
+    if programs_without_certificates:
+        if programs_without_certificates[0].lower() == "all":
+            # this check will prevent unnecessary logging for partners without program certificates
+            return
 
+    countdown = 2 ** self.request.retries
     # If the credentials config model is disabled for this
     # feature, it may indicate a condition where processing of such tasks
     # has been temporarily disabled.  Since this is a recoverable situation,
@@ -157,16 +162,9 @@ def award_program_certificates(self, username):
         # Determine which program certificates the user has already been awarded, if any.
         existing_program_uuids = get_certified_programs(student)
 
-        programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
-        if programs_without_certificates:
-            if programs_without_certificates[0].lower == "all":
-                # this check will prevent unnecessary logging for partners without program certificates
-                return
-
-            # removing the program uuids from completed or already certificate provided programs list.
-            for program in programs_without_certificates:
-                _ = completed_programs.pop(program['uuid'], None)
-                _ = existing_program_uuids.pop(program['uuid'], None)
+        # removing the program uuids from completed or already certificate provided programs list.
+        for program_uuid in programs_without_certificates:
+            _ = completed_programs.pop(program_uuid, None)
 
     except Exception as exc:
         LOGGER.exception('Failed to determine program certificates to be awarded for user %s', username)
@@ -179,6 +177,7 @@ def award_program_certificates(self, username):
     #
     # N.B. the list is sorted to facilitate deterministic ordering, e.g. for tests.
     new_program_uuids = sorted(list(set(completed_programs.keys()) - set(existing_program_uuids)))
+    from pdb import set_trace; set_trace()
     if new_program_uuids:
         try:
             credentials_client = get_credentials_api_client(
