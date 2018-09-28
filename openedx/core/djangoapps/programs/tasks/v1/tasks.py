@@ -124,7 +124,6 @@ def award_program_certificates(self, username):
 
     """
     LOGGER.info('Running task award_program_certificates for username %s', username)
-
     programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
     if programs_without_certificates:
         if programs_without_certificates[0].lower() == "all":
@@ -177,7 +176,6 @@ def award_program_certificates(self, username):
     #
     # N.B. the list is sorted to facilitate deterministic ordering, e.g. for tests.
     new_program_uuids = sorted(list(set(completed_programs.keys()) - set(existing_program_uuids)))
-    from pdb import set_trace; set_trace()
     if new_program_uuids:
         try:
             credentials_client = get_credentials_api_client(
