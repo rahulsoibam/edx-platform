@@ -172,7 +172,7 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         self.assertEqual(actual_visible_dates, expected_awarded_program_uuids)  # program uuids are same as mock dates
 
     @ddt.data(
-        ([1], [2, 3]),
+        ([1], [3]),
     )
     @ddt.unpack
     def test_awarding_certs_with_skip_program_certificate(
@@ -191,13 +191,15 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         mock_get_completed_programs.return_value = {1: 1, 2: 2, 3: 3}
         mock_get_certified_programs.return_value = already_awarded_program_uuids
 
-        tasks.award_program_certificates.delay(self.student.username).get()
+        with mock.patch('openedx.core.djangoapps.site_configuration.helpers.get_value') as mocked_get_value:
+            mocked_get_value.return_value = [2]
+            tasks.award_program_certificates.delay(self.student.username).get()
 
-        actual_program_uuids = [call[0][2] for call in mock_award_program_certificate.call_args_list]
-        self.assertEqual(actual_program_uuids, expected_awarded_program_uuids)
+            actual_program_uuids = [call[0][2] for call in mock_award_program_certificate.call_args_list]
+            self.assertEqual(actual_program_uuids, expected_awarded_program_uuids)
 
-        actual_visible_dates = [call[0][3] for call in mock_award_program_certificate.call_args_list]
-        self.assertEqual(actual_visible_dates, expected_awarded_program_uuids)  # program uuids are same as mock dates
+            actual_visible_dates = [call[0][3] for call in mock_award_program_certificate.call_args_list]
+            self.assertEqual(actual_visible_dates, expected_awarded_program_uuids)  # program uuids are same as mock dates
 
     @ddt.data(
         ('credentials', 'enable_learner_issuance'),
