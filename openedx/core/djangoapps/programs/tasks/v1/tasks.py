@@ -126,7 +126,7 @@ def award_program_certificates(self, username):
     LOGGER.info('Running task award_program_certificates for username %s', username)
     programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
     if programs_without_certificates:
-        if programs_without_certificates[0].lower() == "all":
+        if str(programs_without_certificates[0]).lower() == "all":
             # this check will prevent unnecessary logging for partners without program certificates
             return
 

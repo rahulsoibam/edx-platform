@@ -181,11 +181,12 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
     ):
         """
         Checks that the Credentials API is used to award certificates for
-        the proper programs.
+        the proper programs and those program will be skipped which are provided
+        by 'programs_without_certificates' list in site configuration.
         """
-        program_uuid_1 = str(uuid.uuid4())
-        program_uuid_2 = str(uuid.uuid4())
-        program_uuid_3 = str(uuid.uuid4())
+        program_uuid_1 = 1
+        program_uuid_2 = 2
+        program_uuid_3 = 3
 
         # program that will be skipped for certificated
         mock_get_value.return_value = [program_uuid_2]
@@ -194,7 +195,7 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         mock_get_completed_programs.return_value = {program_uuid_1: 1, program_uuid_2: 2, program_uuid_3: 3}    #completed
 
         # program list which is already been awarded bt certificated.
-        mock_get_certified_programs.return_value = [program_uuid_2]
+        mock_get_certified_programs.return_value = [program_uuid_1]
 
         tasks.award_program_certificates.delay(self.student.username).get()
         actual_program_uuids = [call[0][2] for call in mock_award_program_certificate.call_args_list]
@@ -261,8 +262,8 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         mock_award_program_certificate
     ):
         """
-        Checks that the task will be aborted without further action if there
-        are no programs for which to award a certificate.
+        Checks that the task will be aborted without further action if there exists a list
+        programs_without_certificates with ["ALL"] value in site configuration.
         """
         mock_get_value.return_value = ["ALL"]
         mock_get_completed_programs.return_value = {}
