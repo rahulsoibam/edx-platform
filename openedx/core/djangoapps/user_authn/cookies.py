@@ -17,7 +17,7 @@ from django.utils.http import cookie_date
 from edx_rest_framework_extensions.auth.jwt import cookies as jwt_cookies
 from edx_rest_framework_extensions.auth.jwt.constants import JWT_DELIMITER
 from oauth2_provider.models import Application
-from openedx.core.djangoapps.oauth_dispatch.api import create_dot_access_token
+from openedx.core.djangoapps.oauth_dispatch.api import create_dot_access_token, refresh_dot_access_token
 from openedx.core.djangoapps.oauth_dispatch.jwt import create_user_login_jwt
 from openedx.core.djangoapps.user_api.accounts.utils import retrieve_last_sitewide_block_completed
 from openedx.core.djangoapps.user_authn.waffle import JWT_COOKIES_FLAG
@@ -145,6 +145,16 @@ def set_logged_in_cookies(request, response, user):
     return response
 
 
+def refresh_jwt_cookies(request, response):
+    """
+    Resets the JWT related cookies in the response, while expecting a refresh
+    cookie in the request.
+    """
+    refresh_token = request.COOKIES.get(jwt_cookies.jwt_refresh_cookie_name())
+    _create_and_set_jwt_cookies(response, request, user, refresh_token)
+    return response
+
+
 def _set_deprecated_logged_in_cookie(response, request):
     """ Sets the logged in cookie on the response. """
 
@@ -230,7 +240,7 @@ def _get_user_info_cookie_data(request, user):
     return user_info
 
 
-def _create_and_set_jwt_cookies(response, request, user):
+def _create_and_set_jwt_cookies(response, request, user, refresh_token=None):
     """ Sets a cookie containing a JWT on the response. """
     if not JWT_COOKIES_FLAG.is_enabled():
         return
@@ -240,16 +250,15 @@ def _create_and_set_jwt_cookies(response, request, user):
     _set_jwt_expiration(cookie_settings)
     expires_in = cookie_settings['max_age']
 
-    try:
-        login_oauth_client_id = settings.JWT_AUTH['LOGIN_CLIENT_ID']
-        oauth_application = Application.objects.get(client_id=login_oauth_client_id)
-    except (Application.DoesNotExist, KeyError):
-        # TODO Consider what we fallback to in this case, while noting the
-        # implementation of is_logged_in_cookie_set.
-        log.exception(u'OAuth Application for Login is not configured.')
-        raise
-
-    access_token = create_dot_access_token(request, user, oauth_application, expires_in=expires_in)
+    oauth_application = _get_login_oauth_client()
+    if refresh_token:
+        access_token = refresh_dot_access_token(
+            request, user, oauth_application.client_id, refresh_token, expires_in=expires_in,
+        )
+    else:
+        access_token = create_dot_access_token(
+            request, user, oauth_application, expires_in=expires_in,
+        )
     jwt = create_user_login_jwt(user, expires_in)
     jwt_header_and_payload, jwt_signature = _parse_jwt(jwt)
     _set_jwt_cookies(
@@ -309,3 +318,17 @@ def _set_jwt_expiration(cookie_settings):
 def _cookie_expiration_based_on_max_age(max_age):
     expires_time = time.time() + max_age
     return cookie_date(expires_time)
+
+
+def _get_login_oauth_client():
+    """
+    Returns the configured OAuth Client/Application used for Login.
+    """
+    try:
+        login_oauth_client_id = settings.JWT_AUTH['LOGIN_CLIENT_ID']
+        return Application.objects.get(client_id=login_oauth_client_id)
+    except (Application.DoesNotExist, KeyError):
+        # TODO Consider what we fallback to in this case, while noting the
+        # implementation of is_logged_in_cookie_set.
+        log.exception(u'OAuth Application for Login is not configured.')
+        raise

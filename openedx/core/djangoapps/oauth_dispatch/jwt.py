@@ -110,6 +110,8 @@ def _create_token(
         use_asymmetric_key (Boolean): Whether the JWT should be signed with this app's private key.
         secret (string): Overrides configured JWT secret (signing) key.
     """
+    # TODO put access_token as jwt-id
+
     scopes = scopes or ['email', 'profile']
     now = int(time())
     expires_in = expires_in or settings.JWT_AUTH['JWT_EXPIRATION']
