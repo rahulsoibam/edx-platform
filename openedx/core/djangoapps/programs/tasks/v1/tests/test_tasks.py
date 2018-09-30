@@ -2,12 +2,12 @@
 Tests for programs celery tasks.
 """
 import json
+import logging
 from datetime import datetime, timedelta
 import ddt
 import httpretty
 import mock
 import pytz
-import uuid
 from waffle.testutils import override_switch
 from celery.exceptions import MaxRetriesExceededError
 from django.conf import settings
@@ -26,6 +26,7 @@ from openedx.core.djangoapps.site_configuration.tests.factories import SiteFacto
 from openedx.core.djangolib.testing.utils import skip_unless_lms
 from student.tests.factories import UserFactory
 
+log = logging.getLogger(__name__)
 
 CREDENTIALS_INTERNAL_SERVICE_URL = 'https://credentials.example.com'
 TASKS_MODULE = 'openedx.core.djangoapps.programs.tasks.v1.tasks'
@@ -170,15 +171,15 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
 
         actual_visible_dates = [call[0][3] for call in mock_award_program_certificate.call_args_list]
         self.assertEqual(actual_visible_dates, expected_awarded_program_uuids)  # program uuids are same as mock dates
-
-    @ddt.data(
-        ([1], [3]),
-    )
-    @ddt.unpack
+    #
+    # @ddt.data(
+    #     ([1], [3]),
+    # )
+    # @ddt.unpack
     def test_awarding_certs_with_skip_program_certificate(
             self,
-            already_awarded_program_uuids,
-            expected_awarded_program_uuids,
+            # already_awarded_program_uuids,
+            # expected_awarded_program_uuids,
             mock_get_completed_programs,
             mock_get_certified_programs,
             mock_award_program_certificate,
@@ -188,10 +189,13 @@ class AwardProgramCertificatesTestCase(CatalogIntegrationMixin, CredentialsApiCo
         the proper programs and those program will be skipped which are provided
         by 'programs_without_certificates' list in site configuration.
         """
+        log.info("in concenred test")
+        expected_awarded_program_uuids = [3]
         mock_get_completed_programs.return_value = {1: 1, 2: 2, 3: 3}
-        mock_get_certified_programs.return_value = already_awarded_program_uuids
+        mock_get_certified_programs.return_value = [1]# already_awarded_program_uuids
 
         with mock.patch('openedx.core.djangoapps.site_configuration.helpers.get_value') as mocked_get_value:
+            log.info("in concenred test progress")
             mocked_get_value.return_value = [2]
             tasks.award_program_certificates.delay(self.student.username).get()
 

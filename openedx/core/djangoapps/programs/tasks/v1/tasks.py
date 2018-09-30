@@ -123,9 +123,11 @@ def award_program_certificates(self, username):
         None
 
     """
+    LOGGER.info("in task function")
     LOGGER.info('Running task award_program_certificates for username %s', username)
     programs_without_certificates = configuration_helpers.get_value('programs_without_certificates', [])
     if programs_without_certificates:
+        LOGGER.info("in task if")
         if str(programs_without_certificates[0]).lower() == "all":
             # this check will prevent unnecessary logging for partners without program certificates
             return
@@ -161,9 +163,14 @@ def award_program_certificates(self, username):
         # Determine which program certificates the user has already been awarded, if any.
         existing_program_uuids = get_certified_programs(student)
 
+        #from pdb import set_trace; set_trace()
+        LOGGER.info("in task check point 1")
         # removing the program uuids from completed or already certificate provided programs list.
         for program_uuid in programs_without_certificates:
+            LOGGER.info("in task check point 2")
+            LOGGER.info("in task check point 3" + str(program_uuid))
             _ = completed_programs.pop(program_uuid, None)
+            LOGGER.info(completed_programs)
 
     except Exception as exc:
         LOGGER.exception('Failed to determine program certificates to be awarded for user %s', username)
